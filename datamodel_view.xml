@@ -1,0 +1,89 @@
+<form>
+  <label>DataModel View</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="datamodel">
+      <label>Data Model</label>
+      <fieldForLabel>listName</fieldForLabel>
+      <fieldForValue>modelName</fieldForValue>
+      <search>
+        <query>
+          | datamodel 
+          | spath output=modelName path=modelName 
+          | spath output=displayName path=displayName
+          | eval listName=displayName+": " +modelName
+          | sort listName
+          | table  listName modelName</query>
+      </search>
+    </input>
+  </fieldset>
+  
+  <search id="datamodel_base_search">
+     <query>
+          | datamodel $datamodel$ 
+          | spath output=modelName path=modelName 
+          | spath output=foo path=objects{} 
+          | mvexpand foo </query>
+ </search>  
+ 
+   <row>
+    <panel>
+      <table>
+        <title>Datasets for $datamodel$:</title>
+        <search base="datamodel_base_search">
+          <query>
+          spath input=foo output=objectName path=objectName 
+          | spath input=foo output=foo path=constraints{} 
+          | mvexpand foo 
+          | spath input=foo output=owner path=owner 
+          | table owner</query>
+        </search>
+        <option name="drilldown">cell</option>
+        <drilldown>
+          <set token="owner">$row.owner$</set>
+        </drilldown>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Constraints for $owner$:</title>
+          <search base="datamodel_base_search">
+          <query>
+            spath input=foo output=objectName path=objectName 
+            | spath input=foo output=foo path=constraints{} 
+            | mvexpand foo 
+            | spath input=foo output=owner path=owner 
+            | spath input=foo output=search path=search 
+            | table modelName,objectName,owner, search
+            | eval owner_token="$owner$"
+            | makemv delim="." owner_token
+            | eval n=mvfind(owner_token,objectName)
+            | search n&gt;=0
+            | fields modelName,objectName,owner, search</query>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+          <search base="datamodel_base_search">
+          <query>
+            spath input=foo output=objectName path=objectName 
+            | spath input=foo output=foo path=fields{} 
+            | mvexpand foo 
+            | spath input=foo output=fieldName path=fieldName 
+            | spath input=foo output=type path=type 
+            | eval owner_token="$owner$"
+            | makemv delim="." owner_token
+            | eval n=mvfind(owner_token,objectName)
+            | search n&gt;=0
+            | dedup fieldName
+            | table modelName,objectName, fieldName,type</query>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>
